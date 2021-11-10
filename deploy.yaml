@@ -1,0 +1,94 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: prometheus-test
+  namespace: openshift-storage
+  labels:
+    app.kubernetes.io/name: prometheus-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus-test
+    spec:
+      restartPolicy: Always
+      containers:
+        - resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 500Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9100
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: prometheus-test
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9100
+              scheme: HTTP
+            initialDelaySeconds: 15
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          ports:
+            - name: metrics
+              containerPort: 9100
+              protocol: TCP
+          imagePullPolicy: Always
+          terminationMessagePolicy: File
+          image: "quay.io/shdn/prometheus-test-data:1.0.0"
+      dnsPolicy: ClusterFirst
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus-test
+  namespace: openshift-storage
+  labels:
+    app.kubernetes.io/name: prometheus-test
+spec:
+  ports:
+    - name: metrics
+      protocol: TCP
+      port: 9100
+      targetPort: 9100
+  selector:
+    app.kubernetes.io/name: prometheus-test
+  type: ClusterIP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-test
+  namespace: openshift-storage
+  labels:
+    app.kubernetes.io/name: prometheus-test
+spec:
+  endpoints:
+    - bearerTokenSecret:
+        key: ""
+      interval: 1m
+      port: metrics
+      scrapeTimeout: 20s
+  namespaceSelector:
+    matchNames:
+      - openshift-storage
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-test
