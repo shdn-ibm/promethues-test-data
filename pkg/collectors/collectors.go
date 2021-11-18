@@ -177,22 +177,60 @@ func (f *PerfCollector) collectSystemMetrics(ch chan<- prometheus.Metric) bool {
 	newPerfMetrics(ch, f.sysInfoDescriptors[SystemHealth], status, &systemInfo)
 
 	// Parse Perf Results
+	metricValue:= 30*1024 + float64(rand.Intn(2*1024)*10) // read iops 30k - 50k
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageReadIOPS], metricValue , &systemInfo)
+	metricValue = 10*1024 + float64(rand.Intn(2*1024)*10) // write iops 10k - 30k
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageWriteIOPS], metricValue , &systemInfo)
+	metricValue = 70*1024*1024 + float64(rand.Intn(2*1024)*10*1024) // read bytes 70M - 90M
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageReadBytes], metricValue , &systemInfo)
+	metricValue = 20*1024*1024 + float64(rand.Intn(2*1024)*10*1024) // write bytes 20M - 40M
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageWriteBytes], metricValue , &systemInfo)
+	metricValue = 0.0001 + float64(rand.Intn(10))*0.0001 // read latency 0.0001 - 0.001
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageReadLatency], metricValue , &systemInfo)
+	metricValue = 0.0001 + float64(rand.Intn(10))*0.0001 // write latency 0.0001 - 0.001
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageWriteLatency], metricValue , &systemInfo)
+	const totalBytes = 50*1024*1024*1024*1024 // 50T
+	metricValue = 30*1024*1024*1024*1024 + float64(rand.Intn(2*1024)*10*1024*1024*1024) // used bytes 30T - 50T
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageUsedBytes], metricValue , &systemInfo)
+	newPerfMetrics(ch, f.sysPerfDescriptors[StorageAvailableBytes], totalBytes - metricValue , &systemInfo)
+	/*
 	for _, m := range f.sysPerfDescriptors {
 		unixT := time.Now().Unix()
 		metricValue:= float64(unixT)* float64(rand.Intn(100))
 		newPerfMetrics(ch, m, metricValue , &systemInfo)
 	}
+	*/
 
 	// Parse Application Results
-	appInfo := AppInfo{
-		Name: "mongodb",
+	appSamples := []string{"book-store", "wordpress", "devOps"}
+	const appProvisionedBytes = 100*1024*1024*1024*1024 // 100T
+	const appBackupTotalBytes = 100*1024*1024*1024*1024 // 100T
+	for _, appName:= range appSamples {
+		appInfo := AppInfo{
+			Name: appName,
+		}
+		metricValue = 10*1024*1024*1024*1024 + float64(rand.Intn(2*1024)*10*1024*1024*1024) // app used bytes 10T - 30T
+		newAppMetrics(ch, f.appDescriptors[AppCapacityUsedBytes], metricValue , &systemInfo, &appInfo)
+		newAppMetrics(ch, f.appDescriptors[AppCapacityAvailableBytes], appProvisionedBytes - metricValue , &systemInfo, &appInfo)
+		metricValue = 60*1024*1024*1024*1024 + float64(rand.Intn(2*1024)*10*1024*1024*1024) // backup used bytes 60T - 80T
+		newAppMetrics(ch, f.appDescriptors[AppBackupUsedBytes], metricValue , &systemInfo, &appInfo)
+		newAppMetrics(ch, f.appDescriptors[AppBackupAvailableBytes], appBackupTotalBytes - metricValue , &systemInfo, &appInfo)
+		metricValue = 59 + float64(rand.Intn(60)*60) // backup duration 1 minute - 60 minutes
+		newAppMetrics(ch, f.appDescriptors[AppBackupDuration], metricValue , &systemInfo, &appInfo)
+		metricValue = float64(rand.Intn(60)) // backup failed count 1 - 60 
+		newAppMetrics(ch, f.appDescriptors[AppBackupJobFailedCount], metricValue , &systemInfo, &appInfo)
+		metricValue = float64(rand.Intn(60)) // backup running count 1 - 60
+		newAppMetrics(ch, f.appDescriptors[AppBackupJobRunningCount], metricValue , &systemInfo, &appInfo)
+		metricValue = float64(rand.Intn(60)) // backup success count 1 - 60
+		newAppMetrics(ch, f.appDescriptors[AppBackupJobSuccessCount], metricValue , &systemInfo, &appInfo)
+		/*
+		for _, m := range f.appDescriptors {
+			unixT := time.Now().Unix()
+			metricValue:= float64(unixT)* float64(rand.Intn(100))
+			newAppMetrics(ch, m, metricValue , &systemInfo, &appInfo)
+		}
+		*/
 	}
-	for _, m := range f.appDescriptors {
-		unixT := time.Now().Unix()
-		metricValue:= float64(unixT)* float64(rand.Intn(100))
-		newAppMetrics(ch, m, metricValue , &systemInfo, &appInfo)
-	}
-
 	return true
 }
 
